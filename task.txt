@@ -1,0 +1,2 @@
+I want to add text size change option in setting bar 
+I want to make view detail box for beautiful in admin panel dashboard

@@ -1,0 +1,76 @@
+start API: node backend/server.js
+npm run dev:web
+
+
+
+Backend Implementation Steps
+
+Bootstrap the workspace
+
+scaffold backend with nest new keplr-task-backend, enable strict TypeScript, ESLint, Prettier, Husky pre-commit for lint/test.
+add .env.example documenting DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, REDIS_URL, S3_*, PDF_ENGINE.
+install core deps: @nestjs/config, @nestjs/jwt, @nestjs/passport, passport-jwt, @nestjs/mapped-types, class-validator, class-transformer, @nestjs/throttler, nestjs-pino; add @nestjs/swagger optional for docs.
+Wire shared infrastructure
+
+create modules: AppModule, ConfigModule (load env, validation schema), PrismaModule (singleton client), TenantModule (resolver, tenant context provider).
+Prisma: npx prisma init, define base schema (Tenant, User, Task, TaskAssignment, MediaAsset, Purchase, Receipt, RefreshToken, AuditLog). Keep snake_case with @@map.
+add tenant_id to every tenant-scoped table; generate client (npx prisma generate).
+create PrismaService wrapper injecting tenantId via middleware for multi-tenancy filter (scopes queries automatically). Provide raw access for cross-tenant admin tasks.
+Multi-tenancy plumbing
+
+implement TenantResolver pulling tenant from subdomain header or X-Tenant, fallback to JWT claim; store in request-scoped provider.
+write guard/interceptor that ensures tenant exists, attaches to request context, rejects if missing.
+add TenantMigration script to seed default tenant with admin user.
+Auth & RBAC
+
+build AuthModule: controllers for POST /auth/login, POST /auth/refresh, POST /auth/logout, POST /auth/register (dev only).
+configure JwtModule with access/refresh secrets + expiries; use AccessJwtStrategy and RefreshJwtStrategy.
+create RolesGuard and PoliciesGuard using Nest CASL or custom policy callbacks; set enums Role { Admin, Staff, Technician }.
+store refresh tokens hashed in DB with expiration; add throttling on login endpoints.
+Global middleware & utilities
+
+add validation pipe with whitelist, forbidNonWhitelisted; exception filter to map domain errors → RFC7807 ProblemDetails style responses.
+set up logging (nestjs-pino) with correlation IDs; add health checks controller (/health/live, /health/ready).
+configure CORS, compression, security headers (Helmet), rate limiting for auth routes.
+Feature modules (iterate feature-by-feature)
+
+TenantsModule: CRUD (admin only), branding upload to S3 (use @aws-sdk/client-s3), update locale preferences.
+UsersModule: invite/create users, assign roles, change password, activate technicians. Ensure tenant scoping and email templates placeholders.
+TasksModule: endpoints for create/update, assign technicians, lifecycle actions (/start, /pause, /complete, /reject), store geo stamps & timeline events. Ensure offline-friendly payloads (client-generated IDs accepted, updated_at concurrency).
+MediaModule: pre-signed upload URLs, finalize uploads, thumbnail job queue stub (store metadata now; background processing later).
+SyncModule: batch endpoints for queued offline writes (POST /sync/tasks), respond with conflict info (compare updated_at).
+ReportsModule: PDF job sheet generation stub using pdfkit or @react-pdf/renderer; queue heavy work via Bull or simple cron (to replace with worker later).
+PurchasesModule & ReceiptsModule: CRUD with media attachments, tie to tasks.
+Background processing (lightweight start)
+
+integrate @nestjs/bullmq with Redis for jobs (media processing, PDF).
+define workers under jobs/ directory; register processor in AppModule.
+expose admin-authenticated dashboard endpoint (later swap for UI).
+Observability & metrics
+
+add structured request logging, error logging with tenant/user context.
+integrate OpenTelemetry exporter (optional) or simple /metrics using prom-client.
+ensure audit logging table filled in guards/interceptors for sensitive actions.
+Internationalization support
+
+add nestjs-i18n, load EN/AR translation files for system errors and email templates.
+ensure responses respect tenant locale (e.g., format dates in PDFs).
+Testing & quality
+
+configure Jest + @nestjs/testing; create prisma-test-environment using docker-compose (Postgres).
+write unit tests for guards, services, resolvers; integration tests via Supertest + Nest testing module for auth, tenancy enforcement, task lifecycle, sync conflict scenarios.
+add npm run test:watch, coverage threshold 80%+; run npm run lint & npm run format.
+Deployment & docs
+
+extend root CI (.github/workflows/ci.yml) to run pnpm install, pnpm lint, pnpm test, pnpm prisma migrate deploy.
+create docker-compose.dev.yml for Postgres, Redis, MinIO; add backend/README.md with setup, migrations, common commands.
+prepare Dockerfile (multi-stage build) and K8s manifests or simple PM2 script for first deploy.
+generate Swagger docs via @nestjs/swagger, expose at /docs behind auth in non-dev. Provide typed SDK for frontend using openapi-typescript.
+Rollout order
+
+Foundation + Prisma schema + tenancy guard.
+Auth/Users with JWT + role enforcement.
+Tasks lifecycle + offline sync endpoints.
+Media uploads + storage integration.
+Reporting/PDF + purchases/receipts.
+Background jobs, observability, polishing & hardening.

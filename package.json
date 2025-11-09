@@ -1,0 +1,17 @@
+{
+  "name": "keplrtask-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:admin": "npm run dev --workspace=web",
+    "dev:web": "npm run dev --workspace=web",
+    "dev:backend": "npm run dev --workspace=@repo/backend",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "backend"
+  ]
+}
