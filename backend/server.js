@@ -51,7 +51,7 @@ app.get('/api/tasks', (req, res) => {
 });
 
 // --- Serve React App ---
-const buildPath = path.join(__dirname, '../apps/web/dist');
+const buildPath = path.join(__dirname, '../apps/web/build');
 app.use(express.static(buildPath));
 
 app.get('*', (req, res) => {
