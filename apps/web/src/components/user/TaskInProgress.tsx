@@ -6,7 +6,7 @@ import { Textarea } from '@repo/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/ui/card';
 import { TimeEditor } from './TimeEditor';
-import type { Task } from '../App';
+import type { Task } from '../../types';
 import { ArrowLeft, Camera, Mic, Save, CheckCircle } from 'lucide-react';
 
 interface TaskInProgressProps {
@@ -21,15 +21,15 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
   const [workTitle, setWorkTitle] = useState(task.title);
   const [remarks, setRemarks] = useState(task.remarks || '');
   const [beforePhotos, setBeforePhotos] = useState<string[]>(task.beforePhotos || []);
-  const [startTime, setStartTime] = useState(task.startTime || new Date().toLocaleTimeString('en-US', { 
-    hour12: false, 
-    hour: '2-digit', 
-    minute: '2-digit' 
+  const [startTime, setStartTime] = useState(task.startTime || new Date().toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit'
   }));
 
   const recentClients = [
     'ABC Corporation',
-    'XYZ Hotel', 
+    'XYZ Hotel',
     'Tech Solutions Ltd',
     'Green Energy Co',
     'Metro Construction'
@@ -72,8 +72,8 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
       {/* Header */}
       <div className="bg-background text-foreground border-b p-4">
         <div className="flex items-center gap-3 mb-3">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             className="text-foreground hover:bg-accent"
             onClick={onBack}
@@ -82,7 +82,7 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
           </Button>
           <h1 className="text-xl">Task - In Progress</h1>
         </div>
-        <TimeEditor 
+        <TimeEditor
           time={startTime}
           onTimeChange={setStartTime}
           label={`Date: ${task.scheduledDate ? new Date(task.scheduledDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Not scheduled"} | Started`}
@@ -148,7 +148,7 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
               </Select>
             </div>
 
-        {/* Customer Name */}
+            {/* Customer Name */}
             <div className="space-y-2">
               <Label>Customer Team Name</Label>
               <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -165,8 +165,8 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
               </Select>
             </div>
 
-            
-        {/* Customer Name */}
+
+            {/* Customer Name */}
             <div className="space-y-2">
               <Label>Customer Mobile Number</Label>
               <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -182,7 +182,7 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Before Photos */}
             <div className="space-y-2">
               <Label>Before Photos</Label>
@@ -191,8 +191,8 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
                   <div className="grid grid-cols-2 gap-2">
                     {beforePhotos.map((photo, index) => (
                       <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
-                        <img 
-                          src={photo} 
+                        <img
+                          src={photo}
                           alt={`Before photo ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
@@ -200,8 +200,8 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
                     ))}
                   </div>
                 )}
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleAddPhoto}
                   className="w-full"
                 >
@@ -223,8 +223,8 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
                     className="flex-1"
                     rows={4}
                   />
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
                     onClick={handleVoiceNote}
                     className="shrink-0"
@@ -239,15 +239,15 @@ export function TaskInProgress({ task, onSave, onComplete, onBack }: TaskInProgr
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleSaveDraft}
             className="flex-1"
           >
             <Save className="mr-2 h-4 w-4" />
             Save Draft
           </Button>
-          <Button 
+          <Button
             onClick={onComplete}
             className="flex-1"
           >

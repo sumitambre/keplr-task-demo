@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui";
@@ -20,17 +20,66 @@ import {
   ListTodo,
   CheckCircle2,
   Loader2,
+  Pencil,
+  Building2,
+  MapPin,
+  ClipboardList,
+  FileText,
 } from "lucide-react";
-import { mockTasks, mockUsers, mockClients, statuses } from "../../database/mockData";
+import { mockClients, statuses } from "../../database/mockData";
 import { ResponsiveCardTable } from "./ResponsiveCardTable";
+import { TaskDialog } from "./FloatingAddButton";
+import { TaskPDFPreview } from "../user/TaskPDFPreview";
+
+// Get API URL from environment variable
+const API_URL = ((import.meta as any)?.env?.VITE_API_URL as string | undefined) ?? '';
 
 export function Dashboard() {
-  const [tasks, setTasks] = useState(mockTasks);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<any>(null);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportTask, setReportTask] = useState<any>(null);
+
+  // Fetch data from API on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const base = API_URL?.replace(/\/$/, '') || '';
+
+        // Fetch all data in parallel
+        const [tasksRes, usersRes, clientsRes] = await Promise.all([
+          fetch(`${base}/api/tasks`),
+          fetch(`${base}/api/users`),
+          fetch(`${base}/api/clients`)
+        ]);
+
+        const tasksData = await tasksRes.json();
+        const usersData = await usersRes.json();
+        const clientsData = await clientsRes.json();
+
+        setTasks(tasksData);
+        setUsers(usersData);
+        setClients(clientsData);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        toast.error('Failed to load data from server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Period + custom date range
-  const [timePeriod, setTimePeriod] = useState("today");
+  const [timePeriod, setTimePeriod] = useState("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
 
@@ -43,7 +92,7 @@ export function Dashboard() {
     endDate: "",
   });
 
-  const currentUser = mockUsers[0];
+  const currentUser = users[0] || { username: 'Admin' };
   type KpiKey = "total" | "completed" | "inProgress" | "pending";
   const [selectedKPI, setSelectedKPI] = useState<KpiKey>("total");
   const applyCustomRange = () => setTimePeriod("custom");
@@ -122,7 +171,34 @@ export function Dashboard() {
     setSelectedTask(task);
     setIsViewOpen(true);
   };
-  const handleDelete = (id: number) => setTasks((prev) => prev.filter((t) => t.id !== id));
+  const handleEdit = (task: any) => {
+    setTaskToEdit(task);
+    setIsEditOpen(true);
+  };
+  const handleViewReport = (task: any) => {
+    setReportTask(task);
+    setIsReportOpen(true);
+  };
+  const handleDelete = async (taskId: number) => {
+    if (confirm("Are you sure you want to delete this task?")) {
+      try {
+        const base = API_URL?.replace(/\/$/, '') || '';
+        const response = await fetch(`${base}/api/tasks/${taskId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          setTasks(prev => prev.filter(t => t.id !== taskId));
+          toast.success("Task deleted");
+        } else {
+          toast.error("Failed to delete task");
+        }
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        toast.error("Error deleting task");
+      }
+    }
+  };
 
   const getTaskLocation = (task: any) => {
     if (task.siteMapUrl) return task.siteMapUrl;
@@ -156,19 +232,24 @@ export function Dashboard() {
     timePeriod === "today"
       ? "Today's Tasks"
       : timePeriod === "yesterday"
-      ? "Yesterday's Tasks"
-      : timePeriod === "7days"
-      ? "Last 7 Days Tasks"
-      : timePeriod === "month"
-      ? "Last Month Tasks"
-      : timePeriod === "year"
-      ? "Last Year Tasks"
-      : timePeriod === "custom"
-      ? "Custom Period Tasks"
-      : "All Tasks";
+        ? "Yesterday's Tasks"
+        : timePeriod === "7days"
+          ? "Last 7 Days Tasks"
+          : timePeriod === "month"
+            ? "Last Month Tasks"
+            : timePeriod === "year"
+              ? "Last Year Tasks"
+              : timePeriod === "custom"
+                ? "Custom Period Tasks"
+                : "All Tasks";
 
   return (
     <div className="min-h-screen w-full bg-background">
+      {isReportOpen && reportTask ? (
+        <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+          <TaskPDFPreview task={reportTask} onBack={() => setIsReportOpen(false)} />
+        </div>
+      ) : null}
       <div className="border-b bg-gradient-to-b from-muted/40 to-background">
         <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           <Card className="border-none bg-transparent shadow-none">
@@ -247,10 +328,10 @@ export function Dashboard() {
 
               {(() => {
                 const baseCard =
-                  "rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-pointer select-none data-[selected=true]:ring-2 data-[selected=true]:ring-primary/40";
-                const baseInner = "flex items-center justify-between p-4 text-slate-900";
-                const titleCls = "flex items-center gap-2 text-sm font-medium";
-                const valueCls = "text-3xl font-semibold";
+                  "rounded-xl border border-border bg-blur text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-pointer select-none data-[selected=true]:ring-2 data-[selected=true]:ring-primary/40";
+                const baseInner = "flex items-center justify-between p-4 text-black";
+                const titleCls = "flex items-center gap-2 text-sm font-medium text-black";
+                const valueCls = "text-3xl font-semibold text-black";
 
                 return (
                   <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -258,11 +339,11 @@ export function Dashboard() {
                       data-selected={selectedKPI === "total" ? "true" : "false"}
                       onClick={() => setSelectedKPI("total")}
                       className={baseCard}
-                      style={{ backgroundColor: "#E3F2FD" }}
+                      style={{ backgroundColor: "#E3F2FD", color: "black" }}
                     >
                       <div className={baseInner}>
                         <div className={titleCls}>
-                          <ListTodo className="h-4 w-4" />
+                          <ListTodo className="h-4 w-4 text-black" />
                           Total Tasks
                         </div>
                         <div className={valueCls}>{stats.total}</div>
@@ -273,11 +354,11 @@ export function Dashboard() {
                       data-selected={selectedKPI === "completed" ? "true" : "false"}
                       onClick={() => setSelectedKPI("completed")}
                       className={baseCard}
-                      style={{ backgroundColor: "#E8F5E9" }}
+                      style={{ backgroundColor: "#E8F5E9", color: "black" }}
                     >
                       <div className={baseInner}>
                         <div className={titleCls}>
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 className="h-4 w-4 text-black" />
                           Completed
                         </div>
                         <div className={valueCls}>{stats.completed}</div>
@@ -288,11 +369,11 @@ export function Dashboard() {
                       data-selected={selectedKPI === "inProgress" ? "true" : "false"}
                       onClick={() => setSelectedKPI("inProgress")}
                       className={baseCard}
-                      style={{ backgroundColor: "#E3F2FD" }}
+                      style={{ backgroundColor: "#E3F2FD", color: "black" }}
                     >
                       <div className={baseInner}>
                         <div className={titleCls}>
-                          <Loader2 className="h-4 w-4" />
+                          <Loader2 className="h-4 w-4 text-black" />
                           In Progress
                         </div>
                         <div className={valueCls}>{stats.inProgress}</div>
@@ -303,11 +384,11 @@ export function Dashboard() {
                       data-selected={selectedKPI === "pending" ? "true" : "false"}
                       onClick={() => setSelectedKPI("pending")}
                       className={baseCard}
-                      style={{ backgroundColor: "#FFF3E0" }}
+                      style={{ backgroundColor: "#FFF3E0", color: "black" }}
                     >
                       <div className={baseInner}>
                         <div className={titleCls}>
-                          <Clock className="h-4 w-4" />
+                          <Clock className="h-4 w-4 text-black" />
                           Pending
                         </div>
                         <div className={valueCls}>{stats.pending}</div>
@@ -321,9 +402,9 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-6 sm:px-6 lg:px-8">
         {/* Quick filters */}
-        <Card className="rounded-xl border border-border shadow-sm">
+        <Card className="mt-6 rounded-xl border border-border shadow-sm">
           <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
             <CardTitle className="text-base font-semibold">Quick Filters</CardTitle>
           </CardHeader>
@@ -342,7 +423,7 @@ export function Dashboard() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Users</SelectItem>
-                  {mockUsers.map((u) => (
+                  {users.map((u) => (
                     <SelectItem key={u.id} value={u.name}>
                       {u.name}
                     </SelectItem>
@@ -350,7 +431,6 @@ export function Dashboard() {
                 </SelectContent>
               </Select>
 
-              {/* Client */}
               <Select
                 value={filters.client}
                 onValueChange={(v) => setFilters({ ...filters, client: v })}
@@ -363,7 +443,7 @@ export function Dashboard() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Clients</SelectItem>
-                  {mockClients.map((c) => (
+                  {clients.map((c) => (
                     <SelectItem key={c.id} value={c.name}>
                       {c.name}
                     </SelectItem>
@@ -481,6 +561,14 @@ export function Dashboard() {
                                 <Button size="sm" variant="outline" onClick={() => handleView(task)}>
                                   <Eye className="h-4 w-4" />
                                 </Button>
+                                {task.status === 'Completed' && (
+                                  <Button size="sm" variant="outline" onClick={() => handleViewReport(task)} title="View Report">
+                                    <FileText className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" onClick={() => handleEdit(task)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -550,6 +638,26 @@ export function Dashboard() {
                         <Eye className="h-4 w-4" />
                         View
                       </Button>
+                      {task.status === 'Completed' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex items-center gap-2"
+                          onClick={() => handleViewReport(task)}
+                        >
+                          <FileText className="h-4 w-4" />
+                          Report
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        onClick={() => handleEdit(task)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -573,90 +681,139 @@ export function Dashboard() {
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Task Details</DialogTitle>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <ListTodo className="h-5 w-5 text-primary" />
+              Task Details
+            </DialogTitle>
             <DialogDescription>
-              View detailed information about this task including assignments and requirements.
+              {selectedTask?.title}
             </DialogDescription>
           </DialogHeader>
           {selectedTask && (
-            <div className="space-y-4">
-              <div>
-                <Label>Title</Label>
-                <p className="text-sm">{selectedTask.title}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Task Type</Label>
-                  <Badge variant="outline">{selectedTask.taskType}</Badge>
-                </div>
-                <div>
-                  <Label>Client</Label>
-                  <p className="text-sm">{selectedTask.client}</p>
-                </div>
-              </div>
-              {selectedTask.clientSite && (
-                <div>
-                  <Label>Client Site</Label>
-                  <div className="mt-1 flex items-center gap-3">
-                    <p className="text-sm text-muted-foreground">{selectedTask.clientSite}</p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleClientLocationClick(selectedTask)}
-                    >
-                      Open Map
-                    </Button>
+            <div className="space-y-6 py-4">
+              {/* Status & Priority Banner */}
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border bg-muted/40 p-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+                    <Badge variant={getStatusColor(selectedTask.status)} className="w-fit px-3 py-1 text-sm">
+                      {selectedTask.status}
+                    </Badge>
+                  </div>
+                  <div className="h-8 w-px bg-border" />
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Priority</span>
+                    <Badge variant={getPriorityColor(selectedTask.priority)} className="w-fit px-3 py-1 text-sm">
+                      {selectedTask.priority === "Critical" && <AlertTriangle className="mr-1 h-3 w-3" />}
+                      {selectedTask.priority}
+                    </Badge>
                   </div>
                 </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Assigned To</Label>
-                  <p className="text-sm flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    {selectedTask.assignedTo}
-                  </p>
-                </div>
-                <div>
-                  <Label>Skill Required</Label>
-                  <Badge variant="secondary">{selectedTask.skillRequired}</Badge>
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>Due: {selectedTask.dueDate}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>Priority</Label>
-                  <Badge variant={getPriorityColor(selectedTask.priority)}>{selectedTask.priority}</Badge>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Client Information */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                    <Building2 className="h-4 w-4" /> Client Information
+                  </h4>
+                  <div className="rounded-md border p-3 space-y-3 bg-card">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Client Name</Label>
+                      <p className="font-medium">{selectedTask.client}</p>
+                    </div>
+                    {selectedTask.clientSite && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Site Location</Label>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-sm">{selectedTask.clientSite}</p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-primary hover:text-primary/80 hover:bg-primary/10"
+                            onClick={() => handleClientLocationClick(selectedTask)}
+                          >
+                            <MapPin className="mr-1 h-3 w-3" />
+                            Map
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Contact Name</Label>
+                        <p className="text-sm font-medium">{selectedTask.contactName || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Contact Number</Label>
+                        <p className="text-sm font-medium">{selectedTask.contactNumber || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label>Status</Label>
-                  <Badge variant={getStatusColor(selectedTask.status)}>{selectedTask.status}</Badge>
-                </div>
-                <div>
-                  <Label>Due Date</Label>
-                  <p className="text-sm flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    {selectedTask.dueDate}
-                  </p>
+
+                {/* Task Assignment */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                    <User className="h-4 w-4" /> Assignment Details
+                  </h4>
+                  <div className="rounded-md border p-3 space-y-3 bg-card">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Assigned Technician</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <span className="font-medium">{selectedTask.assignedTo}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Task Type</Label>
+                        <div className="mt-1">
+                          <Badge variant="outline" className="font-normal">{selectedTask.taskType}</Badge>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Required Skill</Label>
+                        <div className="mt-1">
+                          <Badge variant="secondary" className="font-normal">{selectedTask.skillRequired}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <Label>Description</Label>
-                <p className="rounded bg-muted p-3 text-sm">{selectedTask.description}</p>
+              {/* Description */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <ClipboardList className="h-4 w-4" /> Description
+                </h4>
+                <div className="rounded-md bg-muted/50 p-4 text-sm leading-relaxed border">
+                  {selectedTask.description || <span className="text-muted-foreground italic">No description provided.</span>}
+                </div>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button variant="outline" onClick={() => setIsViewOpen(false)} className="flex-1">
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setIsViewOpen(false)}>
                   Close
+                </Button>
+                <Button onClick={() => { setIsViewOpen(false); handleEdit(selectedTask); }}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Task
                 </Button>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+      {/* Edit Dialog */}
+      <TaskDialog open={isEditOpen} onOpenChange={setIsEditOpen} taskToEdit={taskToEdit} />
     </div>
   );
 }

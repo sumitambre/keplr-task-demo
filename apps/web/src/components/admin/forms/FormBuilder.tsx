@@ -18,7 +18,7 @@ type FieldBase = {
   placeholder?: string;
 };
 
-type TextField = FieldBase & { type: 'text' | 'tel' | 'email' | 'number' | 'textarea' };
+type TextField = FieldBase & { type: 'text' | 'tel' | 'email' | 'number' | 'textarea' | 'date' };
 type SelectField = FieldBase & { type: 'select'; options: { value: string; label: string }[] };
 type ComboboxField = FieldBase & { type: 'combobox'; multiple?: boolean; dataSourceKey?: string };
 
@@ -79,8 +79,8 @@ export default function FormBuilder({
         }
         shape[field.key] = field.required
           ? (base instanceof z.ZodArray
-              ? base.min(1, `${field.label} is required`)
-              : base.min(1, `${field.label} is required`))
+            ? base.min(1, `${field.label} is required`)
+            : base.min(1, `${field.label} is required`))
           : base.optional();
       }
     }
@@ -222,7 +222,7 @@ export default function FormBuilder({
           control={control}
           name={name as any}
           render={({ field: f }) => (
-            <Input id={id} placeholder={field.placeholder} value={(f.value ?? '') as any} onChange={(e: React.ChangeEvent<HTMLInputElement>) => f.onChange(e.target.value)} />
+            <Input id={id} type={field.type} placeholder={field.placeholder} value={(f.value ?? '') as any} onChange={(e: React.ChangeEvent<HTMLInputElement>) => f.onChange(e.target.value)} />
           )}
         />
         {formState.errors && (formState.errors as any)[name] && (

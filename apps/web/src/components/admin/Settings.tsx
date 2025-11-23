@@ -146,10 +146,17 @@ export function Settings() {
     };
     const sidebarBg = mixWithWhite(color, 0.93);
     const sidebarFg = pickText(sidebarBg);
+    const isDark = document.documentElement.classList.contains('dark');
     document.documentElement.style.setProperty('--sidebar', sidebarBg);
     document.documentElement.style.setProperty('--sidebar-foreground', sidebarFg);
-    document.documentElement.style.setProperty('--sidebar-primary', color);
-    document.documentElement.style.setProperty('--sidebar-accent', mixWithWhite(color, 0.88));
+    if (isDark) {
+      // In dark mode, keep the navbar/active state neutral dark, not brand color
+      document.documentElement.style.setProperty('--sidebar-primary', 'oklch(.269 0 0)');
+      document.documentElement.style.setProperty('--sidebar-accent', 'oklch(.269 0 0)');
+    } else {
+      document.documentElement.style.setProperty('--sidebar-primary', color);
+      document.documentElement.style.setProperty('--sidebar-accent', mixWithWhite(color, 0.88));
+    }
 
     // Update accent tokens derived from primary
     const primaryFg = pickText(color);

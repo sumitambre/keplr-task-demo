@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dashboard } from "./components/user/Dashboard";
 import { Expenses } from "./components/user/Expenses";
 import { Profile } from "./components/user/Profile";
@@ -9,12 +9,9 @@ import { TaskPDFPreview } from "./components/user/TaskPDFPreview";
 import TaskFormSimple from "./components/user/TaskFormSimple";
 import { mockClients, mockTaskTypes } from "./database/mockData";
 import { Button } from "@repo/ui/button";
-import { Plus, DollarSign, Settings } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@repo/ui/tooltip";
-import { cn } from "@repo/ui/utils";
-import { Task, Expense, User } from "./App"; // This will need to be adjusted
-import { mockTechnicianTasks } from "./database/mockData";
-
+import { DollarSign, Settings } from "lucide-react";
+import type { Task, Expense, User } from "./types"; // Type-only import
+import { FloatingAddButton } from "./components/user/FloatingAddButton";
 export type UserAppProps = {
   user: User;
   onLogout: () => void;
@@ -22,22 +19,86 @@ export type UserAppProps = {
   // For now, we'll use mock data and functions.
 };
 
-// Mock data and functions for standalone operation
-const mockTasks: Task[] = (mockTechnicianTasks as unknown) as Task[];
-const mockExpenses: Expense[] = [];
+// Get API URL from environment variable
+const API_URL = ((import.meta as any)?.env?.VITE_API_URL as string | undefined) ?? '';
 
 export function UserApp({ user, onLogout }: UserAppProps) {
-  const [tasks, setTasks] = useState(mockTasks);
-  const [expenses, setExpenses] = useState(mockExpenses);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [currentScreen, setCurrentScreen] = useState("dashboard");
+  const [loading, setLoading] = useState(true);
+
+  // Fetch tasks from API when component mounts or when returning to dashboard
+  useEffect(() => {
+    const fetchTasks = async () => {
+      // Only fetch if we are on the dashboard to save resources
+      // (Or on initial load)
+      if (currentScreen !== 'dashboard' && tasks.length > 0) return;
+
+      try {
+        setLoading(true);
+        const base = API_URL?.replace(/\/$/, '') || '';
+
+        // Fetch all tasks assigned to this user
+        // We need to match user.username to the user in the database to get their ID
+        // For now, let's fetch all users to find the user ID
+        const usersResponse = await fetch(`${base}/api/users`);
+        const users = await usersResponse.json();
+
+        // Find the current user by username
+        const currentUser = users.find((u: any) => u.username === user.username);
+
+        if (currentUser) {
+          // Fetch tasks assigned to this user with cache busting
+          const tasksResponse = await fetch(`${base}/api/tasks?assignedUserId=${currentUser.id}&_t=${Date.now()}`);
+          const tasksData = await tasksResponse.json();
+
+          // Convert API task format to frontend Task format
+          const convertedTasks: Task[] = tasksData.map((apiTask: any) => ({
+            id: apiTask.id.toString(),
+            clientName: apiTask.client,
+            client: apiTask.client,  // For TaskFormSimple
+            title: apiTask.title,
+            onsiteContactName: apiTask.onsiteContactName || apiTask.contactName || '', // Map contact name
+            contactNumber: apiTask.contactNumber || apiTask.phone || '', // Map contact number
+            scheduledDate: apiTask.scheduledDate,
+            status: apiTask.status as any,
+            startTime: apiTask.startTime,
+            endTime: apiTask.endTime,
+            remarks: apiTask.remarks || apiTask.description,
+            priority: apiTask.priority as any,
+            siteName: apiTask.clientSite,
+            clientSite: apiTask.clientSite,  // For TaskFormSimple
+            taskType: apiTask.taskType,  // For TaskFormSimple
+            siteMapUrl: apiTask.siteMapUrl,
+            // Include session tracking data
+            sessions: apiTask.sessions || [],
+            beforePhotos: apiTask.beforePhotos || [],
+            afterPhotos: apiTask.afterPhotos || [],
+            signature: apiTask.signature || null,
+            ack: apiTask.ack || null,
+          }));
+
+
+          setTasks(convertedTasks);
+        }
+      } catch (error) {
+        console.error('Failed to fetch tasks:', error);
+        // If API fails, tasks will remain empty array
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [user.username, currentScreen]); // Refetch when user or screen changes
 
   const onStartTask = (task: Task) => { setCurrentScreen('taskForm'); setSelectedTask(task); };
   const onContinueTask = (task: Task) => { setCurrentScreen('taskForm'); setSelectedTask(task); };
   const onCompleteTask = (task: Task) => { setCurrentScreen('taskForm'); setSelectedTask(task); };
   const onReviewTask = (task: Task) => { setCurrentScreen('taskPDF'); setSelectedTask(task); };
   const onReopenTask = (task: Task) => { /* Logic to reopen task */ };
-  const onRequestCreateTask = () => { /* Logic to create task */ };
   const onRequestEditTask = (task: Task) => { /* Deprecated in card: no menu */ };
   const onDeleteTask = (taskId: string) => { /* Deprecated in card: no menu */ };
   const onAddExpense = (expense: Omit<Expense, "id">) => { };
@@ -97,11 +158,6 @@ export function UserApp({ user, onLogout }: UserAppProps) {
             onChange={(next) => setSelectedTask(next as any)}
             onBack={() => setCurrentScreen("dashboard")}
             onComplete={(report) => { setSelectedTask(report); setCurrentScreen("taskPDF"); }}
-            dataSources={{
-              clients: mockClients.map((c) => c.name),
-              sites: mockClients.flatMap((c) => (c.sites || []).map((s: any) => s.name)),
-              taskTypes: mockTaskTypes.map((t) => t.name),
-            }}
           />
         );
       default:
@@ -112,8 +168,8 @@ export function UserApp({ user, onLogout }: UserAppProps) {
             onStartTask={onStartTask}
             onContinueTask={onContinueTask}
             onCompleteTask={onCompleteTask}
+            onReviewTask={onReviewTask}
             onNavigate={setCurrentScreen}
-            onRequestCreateTask={onRequestCreateTask}
           />
         );
     }
@@ -144,21 +200,8 @@ export function UserApp({ user, onLogout }: UserAppProps) {
         </div>
       )}
 
-      {currentScreen === "dashboard" && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              onClick={() => onRequestCreateTask()}
-              size="icon"
-              className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-transform hover:scale-105"
-              aria-label="Create New Task"
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent sideOffset={8}>Create New Task</TooltipContent>
-        </Tooltip>
-      )}
+      {/* FloatingAddButton for creating new tasks */}
+      {currentScreen === "dashboard" && <FloatingAddButton />}
 
       <div className="flex-1 min-w-0 overflow-auto">{renderContent()}</div>
     </div>

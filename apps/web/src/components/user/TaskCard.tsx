@@ -3,8 +3,8 @@ import React from 'react';
 import { Badge } from '@repo/ui/badge';
 import { Card, CardContent } from '@repo/ui/card';
 import { cn } from '@repo/ui/utils';
-import type { Task } from '../App';
-import { Play, CheckCircle, Building2, Wrench, MapPin, ExternalLink } from 'lucide-react';
+import type { Task } from '../../types';
+import { Play, Building2, Wrench, MapPin, ExternalLink, User } from 'lucide-react';
 import { useUserPrefs } from '../../context/user-prefs';
 
 interface TaskCardProps {
@@ -12,12 +12,14 @@ interface TaskCardProps {
   onStart: () => void;
   onContinue: () => void;
   onComplete: () => void;
+  onReport?: () => void;
 }
 
 const STATUS_VARIANTS: Record<Task['status'], 'default' | 'secondary' | 'outline'> = {
   New: 'default',
   'In Progress': 'secondary',
   Completed: 'outline',
+  Pending: 'outline', // Added Pending
 };
 
 const STATUS_STYLES: Record<Task['status'], string> = {
@@ -26,6 +28,7 @@ const STATUS_STYLES: Record<Task['status'], string> = {
     'bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200',
   Completed:
     'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200',
+  Pending: 'bg-gray-500/15 text-gray-700 dark:bg-gray-500/20 dark:text-gray-200', // Added Pending
 };
 
 const formatDate = (iso: string | undefined) => {
@@ -47,7 +50,7 @@ const PRIORITY_STYLES: Record<Priority, string> = {
   Low: 'bg-[#DCFCE7] border-[#86EFAC] text-[#065F46]',
 };
 
-export function TaskCard({ task, onStart, onContinue, onComplete }: TaskCardProps) {
+export function TaskCard({ task, onStart, onContinue, onReport }: TaskCardProps) {
   const { fontScale } = useUserPrefs();
   const sizes = fontScale === 'lg'
     ? { titleMain: 'text-[1.15rem]', line: 'text-lg', meta: 'text-base' }
@@ -68,7 +71,6 @@ export function TaskCard({ task, onStart, onContinue, onComplete }: TaskCardProp
   );
 
   const btnSolid = 'bg-primary text-primary-foreground hover:bg-primary/90';
-  const btnOutline = 'bg-white text-primary border border-primary hover:bg-primary/10 dark:bg-white';
 
   const renderPrimaryAction = () => {
     if (task.status === 'New') {
@@ -87,22 +89,23 @@ export function TaskCard({ task, onStart, onContinue, onComplete }: TaskCardProp
 
     if (task.status === 'In Progress') {
       return (
-        <>
-          <BtnBase
-            onClick={onContinue}
-            className={cn('flex-1 w-full sm:w-auto', btnOutline)}
-          // eslint-disable-next-line react/forbid-dom-props
-          >
-            <Play className="mr-2 h-4 w-4" /> Continue
-          </BtnBase>
-          <BtnBase
-            onClick={onComplete}
-            className={cn('flex-1 w-full sm:w-auto', btnSolid)}
-          // eslint-disable-next-line react/forbid-dom-props
-          >
-            <CheckCircle className="mr-2 h-4 w-4" /> Complete
-          </BtnBase>
-        </>
+        <BtnBase
+          onClick={onContinue}
+          className={cn('flex-1 w-full sm:w-auto', btnSolid)}
+        >
+          <Play className="mr-2 h-4 w-4" /> Continue
+        </BtnBase>
+      );
+    }
+
+    if (task.status === 'Completed') {
+      return (
+        <BtnBase
+          onClick={onReport || (() => { })}
+          className={cn('flex-1 w-full sm:w-auto', btnSolid)}
+        >
+          <ExternalLink className="mr-2 h-4 w-4" /> View Report
+        </BtnBase>
       );
     }
 
@@ -142,6 +145,14 @@ export function TaskCard({ task, onStart, onContinue, onComplete }: TaskCardProp
                 <Wrench className="h-4 w-4" />
                 <p className="truncate max-w-full">{task.title}</p>
               </div>
+              {((task as any).onsiteContactName || (task as any).contactNumber) && (
+                <div className={cn("mt-1 flex items-center gap-2 text-muted-foreground", sizes.meta)}>
+                  <User className="h-3.5 w-3.5" />
+                  <p className="truncate">
+                    {[(task as any).onsiteContactName, (task as any).contactNumber].filter(Boolean).join(' • ')}
+                  </p>
+                </div>
+              )}
               <p className={cn("mt-1 text-muted-foreground truncate max-w-full", sizes.meta)}>Scheduled: {formatDate(task.scheduledDate)}</p>
               {(task as any).remarks && (
                 <p className={cn("text-muted-foreground truncate max-w-full", sizes.meta)}>{(task as any).remarks}</p>

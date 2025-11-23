@@ -2350,7 +2350,8 @@
   --chart-5: oklch(.645 .246 16.439);
   --sidebar: oklch(.205 0 0);
   --sidebar-foreground: oklch(.985 0 0);
-  --sidebar-primary: oklch(.488 .243 264.376);
+  /* Use neutral dark for active/primary in dark mode (not tenant color) */
+  --sidebar-primary: oklch(.269 0 0);
   --sidebar-primary-foreground: oklch(.985 0 0);
   --sidebar-accent: oklch(.269 0 0);
   --sidebar-accent-foreground: oklch(.985 0 0);

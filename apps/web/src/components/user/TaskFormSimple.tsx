@@ -6,17 +6,20 @@ import { Label } from '@repo/ui/label';
 import { Textarea } from '@repo/ui/textarea';
 import { Separator } from '@repo/ui/separator';
 import { Camera, Mic, Check, Play, CheckCircle2, ArrowLeft } from 'lucide-react';
-import FormBuilder from '../admin/forms/FormBuilder';
-import { taskSessionSchema, type TaskHeaderValue } from '../forms/taskSessionSchema';
+import type { TaskHeaderValue } from '../forms/taskSessionSchema';
 import { SignaturePad } from './SignaturePad';
 import { useTaskSessions, type Session } from '../../hooks/useTaskSessions';
 
 type SimpleTaskValue = {
+  // Identifier
+  id?: string;
   // Header
   client?: string;
   clientSite?: string;
   taskType?: string;
   title?: string;
+  onsiteContactName?: string;
+  contactNumber?: string;
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
   status?: 'New' | 'In Progress' | 'Completed';
   origin?: 'admin' | 'user';
@@ -29,28 +32,27 @@ type Props = {
   onChange?: (next: SimpleTaskValue) => void;
   onBack?: () => void;
   onComplete?: (payload: any) => void;
-  dataSources?: Record<string, any[]>; // for schema combobox/selects
 };
 
 
-export function TaskFormSimple({ value, onChange, onBack, onComplete, dataSources = {} }: Props) {
+export function TaskFormSimple({ value, onChange, onBack, onComplete }: Props) {
   const header: TaskHeaderValue = useMemo(
     () => ({
       client: value.client,
       clientSite: value.clientSite,
       taskType: value.taskType,
       title: value.title,
+      onsiteContactName: value.onsiteContactName,
+      contactNumber: value.contactNumber,
       priority: (value.priority as any) ?? 'Medium',
       status: (value.status as any) ?? 'New',
     }),
     [value]
   );
 
-  // Sessions hook (captures geo/time)
-  const { sessions, setSessions, activeToday, startToday, endActive, upsert } = useTaskSessions(value.sessions || []);
+  // Sessions hook (captures geo/time) - pass task ID for persistence
+  const { sessions, setSessions, activeToday, startToday, endActive, upsert } = useTaskSessions(value.sessions || [], value.id);
   const active = activeToday;
-  const hasStarted = sessions.length > 0; // first session created
-  const headerLocked = value.origin === 'admin' || hasStarted;
 
   // Pre-start captures (before creating a session)
   const [preBeforePhotos, setPreBeforePhotos] = useState<string[]>([]);
@@ -79,22 +81,37 @@ export function TaskFormSimple({ value, onChange, onBack, onComplete, dataSource
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions]);
 
-  const addPreBeforePhotos = (files: FileList | null) => {
+  // Helper function to convert File to base64 data URL for persistent storage
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const addPreBeforePhotos = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const urls = Array.from(files).map((f) => URL.createObjectURL(f));
+    // Convert files to base64 data URLs for persistence
+    const base64Promises = Array.from(files).map(f => fileToBase64(f));
+    const base64Urls = await Promise.all(base64Promises);
     setPreBeforePhotos((prev) => {
-      const next = [...prev, ...urls].slice(0, 8);
+      const next = [...prev, ...base64Urls].slice(0, 8);
       return next;
     });
   };
 
-  const addAfterPhotos = (files: FileList | null) => {
+  const addAfterPhotos = async (files: FileList | null) => {
     if (!files || files.length === 0 || !active) return;
-    const urls = Array.from(files).map((f) => URL.createObjectURL(f));
+    // Convert files to base64 data URLs for persistence
+    const base64Promises = Array.from(files).map(f => fileToBase64(f));
+    const base64Urls = await Promise.all(base64Promises);
     const current = active.afterPhotos || [];
-    const limited = [...current, ...urls].slice(0, 8);
+    const limited = [...current, ...base64Urls].slice(0, 8);
     upsert({ id: active.id, afterPhotos: limited });
   };
+
 
   const setNotes = (text: string) => {
     if (!active) {
@@ -106,9 +123,9 @@ export function TaskFormSimple({ value, onChange, onBack, onComplete, dataSource
 
   const onStartSession = async () => {
     if (beforeCount < 1) return;
-    const s = await startToday();
-    // move pre-start photos/notes into the session
-    upsert({ id: s.id, beforePhotos: preBeforePhotos, notes: preNotes });
+    // Pass pre-start photos/notes directly to startToday to avoid race condition
+    await startToday({ beforePhotos: preBeforePhotos, notes: preNotes });
+
     setPreBeforePhotos([]);
     setPreNotes('');
     emit({ status: 'In Progress' });
@@ -134,12 +151,14 @@ export function TaskFormSimple({ value, onChange, onBack, onComplete, dataSource
       return;
     }
     upsert({ id: active.id, signatureDataUrl: signature } as any);
-    const latest = await endActive();
-    const finalSessions = latest || sessions;
-    const final = { ...value, status: 'Completed', sessions: finalSessions, ack: { name: ackName || undefined, phone: ackPhone || undefined, note: ackNote || undefined }, finalSignature: signature } as any;
+
+    // End active session and mark task as Completed
+    await endActive(true);
+
     emit({ status: 'Completed' });
     setSignature(undefined);
     try {
+      const final = { ...value, status: 'Completed', sessions, ack: { name: ackName || undefined, phone: ackPhone || undefined, note: ackNote || undefined }, finalSignature: signature } as any;
       onComplete?.(final);
     } catch { }
   };
@@ -162,15 +181,84 @@ export function TaskFormSimple({ value, onChange, onBack, onComplete, dataSource
       {/* Header removed to avoid duplication with schema title */}
       <Card>
         <CardContent className="p-4 sm:p-6">
-          <div className={headerLocked ? 'pointer-events-none opacity-75' : ''}>
-            <FormBuilder
-              schema={taskSessionSchema}
-              value={value}
-              onChange={(next) => onChange?.(next as any)}
-              onSave={() => onChange?.(value)}
-              showSubmit={false}
-              dataSources={dataSources}
-            />
+          <div className="space-y-6">
+            {/* Task Title */}
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">{header.title || 'Task Details'}</h2>
+            </div>
+
+            {/* Status Banner */}
+            <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-muted/40 p-4">
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+                  <Badge
+                    variant={
+                      header.status === 'Completed' ? 'default' :
+                        header.status === 'In Progress' ? 'secondary' :
+                          'outline'
+                    }
+                    className="w-fit px-3 py-1"
+                  >
+                    {header.status || 'New'}
+                  </Badge>
+                </div>
+                <div className="h-8 w-px bg-border" />
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Priority</span>
+                  <Badge
+                    variant={
+                      header.priority === 'Critical' || header.priority === 'High' ? 'destructive' :
+                        header.priority === 'Medium' ? 'secondary' :
+                          'outline'
+                    }
+                    className="w-fit px-3 py-1"
+                  >
+                    {header.priority || 'Medium'}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Client Information */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-foreground/80">Client Information</h4>
+              <div className="rounded-md border p-4 space-y-4 bg-card">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Client Name</Label>
+                    <p className="mt-1 font-medium">{header.client || '—'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Site Location</Label>
+                    <p className="mt-1 font-medium">{header.clientSite || '—'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">On-Site Contact</Label>
+                    <p className="mt-1 font-medium">{header.onsiteContactName || '—'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Contact Number</Label>
+                    <p className="mt-1 font-medium">{header.contactNumber || '—'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Task Information */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-foreground/80">Task Information</h4>
+              <div className="rounded-md border p-4 bg-card">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Task Type</Label>
+                  <div className="mt-1">
+                    <Badge variant="outline" className="font-normal">{header.taskType || '—'}</Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -208,13 +296,17 @@ export function TaskFormSimple({ value, onChange, onBack, onComplete, dataSource
                 multiple
                 capture="environment"
                 className="hidden"
-                onChange={(e) => {
+                onChange={async (e) => {
                   if (active) {
                     // allow adding "before" even after start, capped at 8
-                    const urls = Array.from(e.target.files || []).map((f) => URL.createObjectURL(f));
-                    const current = active.beforePhotos || [];
-                    const limited = [...current, ...urls].slice(0, 8);
-                    upsert({ id: active.id, beforePhotos: limited });
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      const base64Promises = Array.from(files).map(f => fileToBase64(f));
+                      const base64Urls = await Promise.all(base64Promises);
+                      const current = active.beforePhotos || [];
+                      const limited = [...current, ...base64Urls].slice(0, 8);
+                      upsert({ id: active.id, beforePhotos: limited });
+                    }
                   } else {
                     addPreBeforePhotos(e.target.files);
                   }

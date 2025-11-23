@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { Calendar } from '@repo/ui/calendar';
 import { cn } from '@repo/ui/utils';
-import type { Task } from '../App';
+import type { Task } from '../../types';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -81,14 +81,14 @@ export function TaskEditorDialog({ open, mode, initialValues, onOpenChange, onSu
     endTime: z.string().optional(),
     remarks: z.string().optional(),
   })
-  .refine((v) => v.status !== 'In Progress' || !!(v.startTime && v.startTime.trim()), {
-    path: ['startTime'],
-    message: 'Start time required when In Progress',
-  })
-  .refine((v) => v.status !== 'Completed' || !!(v.endTime && v.endTime.trim()), {
-    path: ['endTime'],
-    message: 'End time required when Completed',
-  });
+    .refine((v) => v.status !== 'In Progress' || !!(v.startTime && v.startTime.trim()), {
+      path: ['startTime'],
+      message: 'Start time required when In Progress',
+    })
+    .refine((v) => v.status !== 'Completed' || !!(v.endTime && v.endTime.trim()), {
+      path: ['endTime'],
+      message: 'End time required when Completed',
+    });
 
   const form = useForm<TaskEditorValues>({
     resolver: zodResolver(TaskEditorSchema),

@@ -58,3 +58,9 @@ WCAG AA, large tap targets; bilingual text; RTL mirroring; device font scaling s
 Commands
 
 npm run dev|build|preview|lint|test
+
+Theming Exception (Do Not Change)
+
+- Admin Dashboard KPI cards (Total, Completed, In Progress, Pending) must always render their text and icons in pure black, regardless of light/dark theme or tenant brand color.
+- Implementation detail: these cards use a container with `text-black` applied (see `components/admin/Dashboard.tsx` around the KPI grid). Do not replace with `text-card-foreground` or any theme token.
+- If refactoring or extracting these cards, preserve the `text-black` styling explicitly on the text container and inherited elements so the color does not vary with theme.

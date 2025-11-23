@@ -4,7 +4,7 @@ import { Label } from '@repo/ui/label';
 import { Textarea } from '@repo/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/ui/card';
 import { TimeEditor } from './TimeEditor';
-import type { Task } from '../App';
+import type { Task } from '../../types';
 import { ArrowLeft, Camera, FileText } from 'lucide-react';
 
 interface TaskCompleteProps {
@@ -18,10 +18,10 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
   const [signature, setSignature] = useState(task.signature || '');
   const [finalRemarks, setFinalRemarks] = useState(task.remarks || '');
   const [startTime, setStartTime] = useState(task.startTime || '');
-  const [endTime, setEndTime] = useState(task.endTime || new Date().toLocaleTimeString('en-US', { 
-    hour12: false, 
-    hour: '2-digit', 
-    minute: '2-digit' 
+  const [endTime, setEndTime] = useState(task.endTime || new Date().toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit'
   }));
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -34,7 +34,7 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     setIsDrawing(true);
     const rect = canvas.getBoundingClientRect();
     const ctx = canvas.getContext('2d');
@@ -46,10 +46,10 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
-    
+
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const rect = canvas.getBoundingClientRect();
     const ctx = canvas.getContext('2d');
     if (ctx) {
@@ -87,7 +87,7 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
       endTime,
       endLocation: { lat: 25.2048, lng: 55.2708 } // Mock geo location
     };
-    
+
     onComplete(completedTask);
   };
 
@@ -96,8 +96,8 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
       {/* Header */}
       <div className="bg-background text-foreground border-b p-4">
         <div className="flex items-center gap-3 mb-3">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             className="text-foreground hover:bg-accent"
             onClick={onBack}
@@ -107,7 +107,7 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
           <h1 className="text-xl">Task - Complete</h1>
         </div>
         <div className="space-y-1">
-          <TimeEditor 
+          <TimeEditor
             time={endTime}
             onTimeChange={setEndTime}
             label="Completion time"
@@ -128,7 +128,7 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
             <div className="bg-muted p-3 rounded-lg space-y-2">
               <p><strong>Client:</strong> {task.clientName}</p>
               <p><strong>Task:</strong> {task.title}</p>
-              <TimeEditor 
+              <TimeEditor
                 time={startTime}
                 onTimeChange={setStartTime}
                 label="Started"
@@ -143,8 +143,8 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
                   <div className="grid grid-cols-2 gap-2">
                     {afterPhotos.map((photo, index) => (
                       <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
-                        <img 
-                          src={photo} 
+                        <img
+                          src={photo}
                           alt={`After photo ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
@@ -152,8 +152,8 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
                     ))}
                   </div>
                 )}
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleAddPhoto}
                   className="w-full"
                 >
@@ -180,8 +180,8 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
                     onMouseLeave={stopDrawing}
                   />
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={clearSignature}
                   size="sm"
                 >
@@ -204,7 +204,7 @@ export function TaskComplete({ task, onComplete, onBack }: TaskCompleteProps) {
         </Card>
 
         {/* Complete Button */}
-        <Button 
+        <Button
           onClick={handleSaveAndGeneratePDF}
           className="w-full h-12"
         >

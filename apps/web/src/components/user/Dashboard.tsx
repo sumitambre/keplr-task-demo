@@ -15,8 +15,8 @@ interface DashboardProps {
   onStartTask: (task: Task) => void;
   onContinueTask: (task: Task) => void;
   onCompleteTask: (task: Task) => void;
+  onReviewTask: (task: Task) => void;
   onNavigate: (screen: string) => void;
-  onRequestCreateTask: (scheduledDate?: string) => void;
 }
 
 const toDateKey = (date: Date) => {
@@ -73,13 +73,13 @@ export function Dashboard({
   onStartTask,
   onContinueTask,
   onCompleteTask,
+  onReviewTask,
   onNavigate,
-  onRequestCreateTask,
 }: DashboardProps) {
   const [statusFilter, setStatusFilter] = useState<'All' | 'New' | 'In Progress' | 'Completed'>('All');
   const [priorityFilter] = useState<'All' | 'Critical' | 'High' | 'Medium' | 'Low'>('All');
-  const [dateFilter, setDateFilter] = useState<DateFilter>({ kind: 'single', date: new Date(), label: 'Today' });
-  const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'custom' | 'all'>('today');
+  const [dateFilter, setDateFilter] = useState<DateFilter>({ kind: 'all', label: 'All Time' });
+  const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'custom' | 'all'>('all');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [clientQuickFilter, setClientQuickFilter] = useState<string>('All Clients');
@@ -176,10 +176,6 @@ export function Dashboard({
     const first = filteredTasks.find((t) => t.status !== 'Completed');
     return first?.id;
   }, [filteredTasks]);
-
-  const handleAddTask = () => {
-    onRequestCreateTask(undefined);
-  };
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-background">
@@ -401,7 +397,6 @@ export function Dashboard({
               Showing {filteredTasks.length} task{filteredTasks.length === 1 ? '' : 's'}
             </span>
           </div>
-          {/* Priority legend removed per request */}
 
           {filteredTasks.length === 0 ? (
             <Card className="border-dashed">
@@ -410,7 +405,6 @@ export function Dashboard({
                 <p>No tasks for the selected range. Enjoy your day or check another date!</p>
                 <div className="flex items-center justify-center gap-2 pt-2">
                   <Button variant="outline" size="sm" onClick={() => { setStatusFilter('All'); setDateFilter({ kind: 'all', label: 'All dates' }); }}>View All Tasks</Button>
-                  <Button size="sm" onClick={handleAddTask}>Add New Task</Button>
                 </div>
               </CardContent>
             </Card>
@@ -422,14 +416,16 @@ export function Dashboard({
                 onStart={() => onStartTask(task)}
                 onContinue={() => onContinueTask(task)}
                 onComplete={() => onCompleteTask(task)}
+                onReport={() => onReviewTask(task)}
               />
             ))
           )}
         </div>
       </div>
-    </div >
+    </div>
   );
 }
+
 
 
 

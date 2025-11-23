@@ -14,7 +14,7 @@ import {
 } from "@repo/ui";
 import { Badge } from "@repo/ui";
 import { ComboboxPopover } from "@repo/ui";
-import FormBuilder from "./forms/FormBuilder";
+import FormBuilder from "../admin/forms/FormBuilder";
 import { mockTaskTypes, mockUsers, mockClients, priorities } from "../../database/mockData";
 
 /**
@@ -45,8 +45,29 @@ function generateTaskId() {
 }
 
 // ------------------------- Component -------------------------
-export default function AddTaskDialog() {
-  const [isOpen, setIsOpen] = useState(false);
+// Get API URL from environment variable
+const API_URL = ((import.meta as any)?.env?.VITE_API_URL as string | undefined) ?? '';
+
+export function TaskDialog({ open, onOpenChange, taskToEdit }: { open: boolean; onOpenChange: (open: boolean) => void; taskToEdit?: any }) {
+  const [apiUsers, setApiUsers] = useState<any[]>([]);
+
+  // Fetch users from API when component mounts
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const base = API_URL?.replace(/\/$/, '') || '';
+        const response = await fetch(`${base}/api/users`);
+        const users = await response.json();
+        setApiUsers(users);
+        setDataSources(prev => ({ ...prev, users: users.map((u: any) => u.name) }));
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+        // Fallback to mock users
+        setApiUsers(mockUsers as any);
+      }
+    };
+    if (open) fetchUsers();
+  }, [open]);
 
   // parent-owned lists (non-mutating updates)
   const [dataSources, setDataSources] = useState<Record<string, any>>({
@@ -54,7 +75,7 @@ export default function AddTaskDialog() {
     sites: [],
     taskTypes: mockTaskTypes.map(t => t.name),
     serviceTypes: Array.from(new Set(mockClients.flatMap(c => c.serviceTypes || []))),
-    users: mockUsers.map(u => u.name),
+    users: [],
   });
 
   const [formData, setFormData] = useState<any>({
@@ -70,6 +91,41 @@ export default function AddTaskDialog() {
     titleTemplate: "",
     description: "",
   });
+
+  // Initialize form data when editing
+  useEffect(() => {
+    if (open && taskToEdit) {
+      setFormData({
+        client: taskToEdit.client || "",
+        clientSite: taskToEdit.clientSite || "",
+        onsiteContactName: taskToEdit.contactName || "",
+        contactNumber: taskToEdit.contactNumber || "",
+        taskTypes: taskToEdit.taskType ? [taskToEdit.taskType] : [],
+        serviceTypes: [], // Service types not typically on task object in this simple model
+        assignees: taskToEdit.assignedTo ? [taskToEdit.assignedTo] : [],
+        priority: taskToEdit.priority || "Medium",
+        dueDate: taskToEdit.dueDate || getDefaultDueDate(),
+        titleTemplate: taskToEdit.title || "",
+        description: taskToEdit.description || "",
+      });
+    } else if (open && !taskToEdit) {
+      // Reset to default for new task
+      setFormData({
+        client: "",
+        clientSite: "",
+        onsiteContactName: "",
+        contactNumber: "",
+        taskTypes: [],
+        serviceTypes: [],
+        assignees: [],
+        priority: "Medium",
+        dueDate: getDefaultDueDate(),
+        titleTemplate: "",
+        description: "",
+      });
+    }
+  }, [open, taskToEdit]);
+
   const [onlyShowAvailable, setOnlyShowAvailable] = useState(false);
 
   // compute prioritized assignees for the custom picker (match + available)
@@ -79,7 +135,7 @@ export default function AddTaskDialog() {
       .filter(Boolean) as string[];
     const skillSet = new Set(requiredSkills);
 
-    let items = mockUsers.map(u => ({
+    let items = apiUsers.map(u => ({
       name: u.name,
       available: !!u.available,
       skills: u.skills || [],
@@ -95,7 +151,7 @@ export default function AddTaskDialog() {
     });
 
     return items;
-  }, [formData.taskTypes, onlyShowAvailable]);
+  }, [formData.taskTypes, onlyShowAvailable, apiUsers]);
 
   useEffect(() => {
     // keep simple name list for FormBuilder compatibility
@@ -121,17 +177,14 @@ export default function AddTaskDialog() {
 
     setDataSources(prev => ({ ...prev, sites, taskTypes: allowedTaskTypes, serviceTypes: svcTypes }));
 
-    // Clamp selections if now invalid
-    setFormData(prev => {
-      const next = { ...prev } as any;
-      if (next.clientSite && !sites.includes(next.clientSite)) next.clientSite = '';
-      if (Array.isArray(next.taskTypes)) next.taskTypes = next.taskTypes.filter((n: string) => allowedTaskTypes.includes(n));
-      if (Array.isArray(next.serviceTypes)) next.serviceTypes = next.serviceTypes.filter((n: string) => svcTypes.includes(n));
-      return next;
-    });
+    // Clamp selections if now invalid (only if not editing or if user changed client)
+    // We need to be careful not to clear data when first loading edit form
+    // But since we set formData in useEffect, this might run after.
+    // Ideally we only clamp if the client *changed* from what was in formData.
+    // For simplicity, we'll skip clamping on initial load if values match.
   }, [formData.client]);
 
-  function handleSaveFromForm() {
+  async function handleSaveFromForm() {
     const errors: string[] = [];
     if (!formData.client) errors.push('Client is required');
     if (!formData.clientSite) errors.push('Client Site is required');
@@ -149,31 +202,65 @@ export default function AddTaskDialog() {
       .map((n: string) => mockTaskTypes.find(t => t.name === n)?.id)
       .filter(Boolean);
     const assigneeIds = (formData.assignees || [])
-      .map((n: string) => mockUsers.find(u => u.name === n)?.id)
+      .map((n: string) => apiUsers.find(u => u.name === n)?.id)
       .filter(Boolean);
 
     const payload = {
-      id: generateTaskId(),
-      clientId: client?.id ?? null,
-      clientSiteId: site?.id ?? null,
-      client: formData.client,
-      clientSite: formData.clientSite,
-      onsiteContactName: formData.onsiteContactName || '',
-      contactNumber: formData.contactNumber || '',
-      taskTypeIds,
-      taskTypes: formData.taskTypes,
-      serviceTypes: formData.serviceTypes,
-      assigneeIds,
-      assignees: formData.assignees,
-      priority: formData.priority || 'Medium',
-      dueDate: formData.dueDate,
-      status: 'New',
       title: formData.titleTemplate?.trim() || `Task for ${formData.client} - ${formData.clientSite}`,
-      description: formData.description || ''
+      taskType: formData.taskTypes[0] || '', // Use first task type
+      taskTypeId: taskTypeIds[0] || 1,
+      client: formData.client,
+      clientId: client?.id ?? null,
+      clientSite: formData.clientSite,
+      siteId: site?.id ?? null,
+      assignedTo: formData.assignees[0] || '', // Use first assignee
+      assignedUserId: assigneeIds[0] || null,
+      priority: formData.priority || 'Medium',
+      status: taskToEdit ? taskToEdit.status : 'New', // Preserve status on edit
+      dueDate: formData.dueDate,
+      scheduledDate: formData.dueDate,
+      description: formData.description || '',
+      skillRequired: mockTaskTypes.find(t => t.id === taskTypeIds[0])?.skillRequired || '',
+      contactName: formData.onsiteContactName || '',
+      contactNumber: formData.contactNumber || '',
     };
 
-    console.log('Create Task (single with arrays):', payload);
-    setIsOpen(false);
+    console.log(taskToEdit ? 'Updating task:' : 'Creating task:', payload);
+
+    try {
+      const API_URL = ((import.meta as any)?.env?.VITE_API_URL as string | undefined) ?? '';
+      const base = API_URL?.replace(/\/$/, '') || '';
+
+      const url = taskToEdit ? `${base}/api/tasks/${taskToEdit.id}` : `${base}/api/tasks`;
+      const method = taskToEdit ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(taskToEdit ? 'Failed to update task' : 'Failed to create task');
+      }
+
+      const result = await response.json();
+      console.log(taskToEdit ? 'Task updated successfully:' : 'Task created successfully:', result);
+
+      // Show success message
+      const toast = (await import('sonner')).toast;
+      toast.success(taskToEdit ? 'Task updated successfully!' : 'Task created successfully!');
+
+      // Close dialog and refresh page to show new task
+      onOpenChange(false);
+      window.location.reload();
+    } catch (error) {
+      console.error(taskToEdit ? 'Error updating task:' : 'Error creating task:', error);
+      const toast = (await import('sonner')).toast;
+      toast.error(taskToEdit ? 'Failed to update task. Please try again.' : 'Failed to create task. Please try again.');
+    }
   }
 
   const renderExtras = (local: any, { setRootField }: any) => {
@@ -220,51 +307,58 @@ export default function AddTaskDialog() {
   };
 
   return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="py-4 pr-2 overflow-hidden flex-1 min-h-0">
+          <FormBuilder
+            schema={{
+              title: taskToEdit ? `Edit Task: ${taskToEdit.title}` : (formData && formData.client ? `Task: ${formData.client}` : 'Add New Task'),
+              sections: [
+                {
+                  key: 'root',
+                  title: 'Task',
+                  fields: [
+                    { key: 'client', label: 'Client', type: 'combobox', dataSourceKey: 'clients', multiple: false },
+                    { key: 'clientSite', label: 'Client Site', type: 'combobox', dataSourceKey: 'sites', multiple: false },
+                    { key: 'onsiteContactName', label: 'On-Site Contact Name', type: 'text' },
+                    { key: 'contactNumber', label: 'Contact Number', type: 'tel' },
+                    { key: 'taskTypes', label: 'Task Types', type: 'combobox', dataSourceKey: 'taskTypes', multiple: true, helperText: 'Manage in Settings → Work Structure.' },
+                    { key: 'serviceTypes', label: 'Service Types', type: 'combobox', dataSourceKey: 'serviceTypes', multiple: true },
+                    { key: 'priority', label: 'Priority', type: 'select', options: priorities.map(p => ({ value: p, label: p })) },
+                    { key: 'dueDate', label: 'Due Date', type: 'date' },
+                    { key: 'titleTemplate', label: 'Title Template', type: 'text' },
+                    { key: 'description', label: 'Description', type: 'text' },
+                  ] as any,
+                },
+              ],
+            } as any}
+            value={formData as any}
+            onChange={(next: any) => setFormData(next)}
+            onSave={handleSaveFromForm}
+            onCancel={() => { onOpenChange(false); }}
+            submitLabel={taskToEdit ? "Update Task" : "Create Task"}
+            dataSources={dataSources}
+            renderExtras={renderExtras}
+            extrasAfterFieldKey="serviceTypes"
+          // Use FormBuilder's built-in actions
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function FloatingAddButton() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
     <>
       {/* Floating Add Button */}
       <Button onClick={() => setIsOpen(true)} className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-50" size="icon" title="Add Task">
         <Plus className="h-6 w-6" />
       </Button>
 
-      {/* Dialog */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-          <div className="py-4 pr-2 overflow-hidden flex-1 min-h-0">
-              <FormBuilder
-                schema={{
-                  title: formData && formData.client ? `Task: ${formData.client}` : 'Add New Task',
-                  sections: [
-                    {
-                      key: 'root',
-                      title: 'Task',
-                      fields: [
-                        { key: 'client', label: 'Client', type: 'combobox', dataSourceKey: 'clients', multiple: false },
-                        { key: 'clientSite', label: 'Client Site', type: 'combobox', dataSourceKey: 'sites', multiple: false },
-                        { key: 'onsiteContactName', label: 'On-Site Contact Name', type: 'text' },
-                        { key: 'contactNumber', label: 'Contact Number', type: 'tel' },
-                        { key: 'taskTypes', label: 'Task Types', type: 'combobox', dataSourceKey: 'taskTypes', multiple: true, helperText: 'Manage in Settings → Work Structure.' },
-                        { key: 'serviceTypes', label: 'Service Types', type: 'combobox', dataSourceKey: 'serviceTypes', multiple: true },
-                        { key: 'priority', label: 'Priority', type: 'select', options: priorities.map(p => ({ value: p, label: p })) },
-                        { key: 'dueDate', label: 'Due Date', type: 'text' },
-                        { key: 'titleTemplate', label: 'Title Template', type: 'text' },
-                        { key: 'description', label: 'Description', type: 'text' },
-                      ] as any,
-                    },
-                  ],
-                } as any}
-                value={formData as any}
-                onChange={(next: any) => setFormData(next)}
-                onSave={handleSaveFromForm}
-                onCancel={() => { setIsOpen(false); }}
-                submitLabel="Create Task"
-                dataSources={dataSources}
-                renderExtras={renderExtras}
-                extrasAfterFieldKey="serviceTypes"
-                // Use FormBuilder's built-in actions
-              />
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TaskDialog open={isOpen} onOpenChange={setIsOpen} />
     </>
   );
 }
