@@ -9,89 +9,115 @@ export const mockUsers = [
 export const mockClients = [
   {
     id: 1,
-    name: 'ABCD Corporation',
-    contactPerson: 'Sarah Johnson',
-    phone: '+1-555-0123',
+    name: 'Omantel',
+    contactPerson: 'Ahmed Al Balushi',
+    phone: '+968 2424 1234',
     openTasks: 3,
     lastVisit: '2025-01-14',
     sites: [
       {
         id: 1,
-        name: 'Main Office',
-        address: '123 Business Ave, New York, NY',
-        googleMapsLink: 'https://maps.google.com/?q=123+Business+Ave,+New+York,+NY',
-        contactNumber: '+1-555-0456',
-        siteContactPerson: 'John Doe',
-        siteContactPosition: 'Office Manager'
+        name: 'Omantel HQ',
+        address: 'Al Mawaleh, Muscat',
+        googleMapsLink: 'https://maps.google.com/?q=Omantel+HQ,+Al+Mawaleh,+Muscat',
+        contactNumber: '+968 2424 0000',
+        siteContactPerson: 'Khalid Al Said',
+        siteContactPosition: 'Operations Manager'
       },
       {
         id: 2,
-        name: 'Warehouse',
-        address: '456 Storage St, New York, NY',
-        googleMapsLink: 'https://maps.google.com/?q=456+Storage+St,+New+York,+NY',
-        contactNumber: '+1-555-0789',
-        siteContactPerson: 'Jane Smith',
-        siteContactPosition: 'Warehouse Supervisor'
+        name: 'Ruwi Main Office',
+        address: 'Ruwi High Street, Muscat',
+        googleMapsLink: 'https://maps.google.com/?q=Omantel+Ruwi,+Muscat',
+        contactNumber: '+968 2470 1234',
+        siteContactPerson: 'Fatima Al Lawati',
+        siteContactPosition: 'Branch Manager'
       }
     ],
     recentTasks: [
-      { id: 1, title: 'Network Installation', date: '2025-01-10', status: 'Completed' },
-      { id: 2, title: 'CCTV Setup', date: '2024-12-15', status: 'Completed' },
+      { id: 1, title: 'Fiber Optic Upgrade', date: '2025-01-10', status: 'Completed' },
+      { id: 2, title: 'CCTV Maintenance', date: '2024-12-15', status: 'Completed' },
     ],
     taskTypeIds: [1, 2, 4],
     serviceTypes: ["Installation", "Maintenance", "Repair"],
   },
   {
     id: 2,
-    name: 'XYZ Inc', // Name from FloatingAddButton
-    contactPerson: 'John Smith',
-    phone: '+1-555-0234',
+    name: 'Petroleum Development Oman (PDO)',
+    contactPerson: 'Mohammed Al Harthy',
+    phone: '+968 2467 8888',
     openTasks: 1,
     lastVisit: '2025-01-12',
     sites: [
       {
         id: 3,
-        name: 'HQ Building',
-        address: '789 Tech Park, San Francisco, CA',
-        googleMapsLink: 'https://maps.google.com/?q=789+Tech+Park,+San+Francisco,+CA',
-        contactNumber: '+1-555-0678',
-        siteContactPerson: 'Peter Jones',
-        siteContactPosition: 'Facilities Manager'
+        name: 'Mina Al Fahal HQ',
+        address: 'Mina Al Fahal, Muscat',
+        googleMapsLink: 'https://maps.google.com/?q=PDO+HQ,+Mina+Al+Fahal',
+        contactNumber: '+968 2467 0000',
+        siteContactPerson: 'Said Al Amri',
+        siteContactPosition: 'Security Chief'
+      },
+      {
+        id: 4,
+        name: 'Ras Al Hamra Club',
+        address: 'Ras Al Hamra, Muscat',
+        googleMapsLink: 'https://maps.google.com/?q=Ras+Al+Hamra+Club',
+        contactNumber: '+968 2467 5555',
+        siteContactPerson: 'Sarah Al Zadjali',
+        siteContactPosition: 'Facilities Coordinator'
       }
     ],
     recentTasks: [
-      { id: 3, title: 'Biometric Setup', date: '2025-01-12', status: 'New' }
+      { id: 3, title: 'Access Control Update', date: '2025-01-12', status: 'New' }
     ],
     taskTypeIds: [2, 5],
     serviceTypes: ["Inspection", "Installation"],
   },
   {
     id: 3,
-    name: "Tech Solutions",
-    contactPerson: 'Jane Doe',
-    phone: '+1-555-1111',
+    name: "Bank Muscat",
+    contactPerson: 'Layla Al Raisi',
+    phone: '+968 2479 5555',
     openTasks: 0,
     lastVisit: '2025-01-20',
-    sites: [{ id: 4, name: "Head Office", address: "321 Innovation Drive", googleMapsLink: 'https://maps.google.com/?q=321+Innovation+Drive', contactNumber: '+1-555-1112', siteContactPerson: 'Tech Contact', siteContactPosition: 'Support Lead' }],
+    sites: [
+      { id: 5, name: "Head Office", address: "Airport Heights, Seeb", googleMapsLink: 'https://maps.google.com/?q=Bank+Muscat+Head+Office', contactNumber: '+968 2476 8000', siteContactPerson: 'Omar Al Balushi', siteContactPosition: 'IT Director' },
+      { id: 6, name: "Al Khuwair Branch", address: "Al Khuwair 33, Muscat", googleMapsLink: 'https://maps.google.com/?q=Bank+Muscat+Al+Khuwair', contactNumber: '+968 2448 9999', siteContactPerson: 'Nasser Al Wahaibi', siteContactPosition: 'Branch Manager' }
+    ],
     taskTypeIds: [1, 3, 5],
     serviceTypes: ["Maintenance", "Upgrade"],
     recentTasks: [],
   },
   {
     id: 4,
-    name: "Global Systems",
-    contactPerson: 'Tom Wilson',
-    phone: '+1-555-2222',
+    name: "Ooredoo Oman",
+    contactPerson: 'Jason Thomas',
+    phone: '+968 9500 9500',
     openTasks: 2,
     lastVisit: '2025-01-18',
     sites: [
-      { id: 5, name: "Corporate HQ", address: "654 Enterprise Blvd", googleMapsLink: 'https://maps.google.com/?q=654+Enterprise+Blvd', contactNumber: '+1-555-2223', siteContactPerson: 'HQ Contact', siteContactPosition: 'Manager' },
-      { id: 6, name: "Data Center", address: "987 Server Lane", googleMapsLink: 'https://maps.google.com/?q=987+Server+Lane', contactNumber: '+1-555-2224', siteContactPerson: 'DC Contact', siteContactPosition: 'Admin' },
+      { id: 7, name: "Ooredoo HQ", address: "Muscat Grand Mall, Tilal Complex", googleMapsLink: 'https://maps.google.com/?q=Ooredoo+Oman+HQ', contactNumber: '+968 9500 0000', siteContactPerson: 'Muna Al Khalili', siteContactPosition: 'Office Admin' },
+      { id: 8, name: "Al Khoudh Store", address: "Al Khoudh Souq, Seeb", googleMapsLink: 'https://maps.google.com/?q=Ooredoo+Al+Khoudh', contactNumber: '+968 9500 1234', siteContactPerson: 'Ali Al Jabri', siteContactPosition: 'Store Manager' },
     ],
     taskTypeIds: [1, 2, 3, 4, 5],
     serviceTypes: ["Installation", "Maintenance", "Audit"],
     recentTasks: [],
   },
+  {
+    id: 5,
+    name: "Muscat Electricity Distribution Company",
+    contactPerson: 'Ibrahim Al Farsi',
+    phone: '+968 8007 0008',
+    openTasks: 1,
+    lastVisit: '2025-01-22',
+    sites: [
+      { id: 9, name: "Main Office", address: "Airport Heights, Muscat", googleMapsLink: 'https://maps.google.com/?q=MEDC+Main+Office', contactNumber: '+968 2458 8888', siteContactPerson: 'Salim Al Habsi', siteContactPosition: 'Operations Lead' },
+    ],
+    taskTypeIds: [1, 4],
+    serviceTypes: ["Repair", "Inspection"],
+    recentTasks: [],
+  }
 ];
 
 export const mockTaskTypes = [
@@ -364,7 +390,7 @@ export const mockTechnicianTasks: TechnicianTask[] = [
     clientName: 'Metro Construction',
     title: 'Temporary site network setup',
     scheduledDate: dateKey(-1),
-    status: 'Completed',
+    status: 'New',
     startTime: '10:05',
     endTime: '13:40',
     priority: 'High',
@@ -396,7 +422,7 @@ export const mockTechnicianTasks: TechnicianTask[] = [
     clientName: 'Tech Solutions Ltd',
     title: 'UPS battery swap (Server room)',
     scheduledDate: dateKey(-7),
-    status: 'Completed',
+    status: 'New',
     startTime: '14:10',
     endTime: '16:05',
     priority: 'Low',
