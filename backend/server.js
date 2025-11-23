@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -785,21 +786,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Keplr Task Backend API',
-    version: '1.0.0',
-    endpoints: {
-      auth: ['/api/login', '/api/logout'],
-      users: '/api/users',
-      clients: '/api/clients',
-      tasks: '/api/tasks',
-      taskTypes: '/api/task-types',
-      transactions: '/api/transactions',
-      dashboard: '/api/dashboard/stats',
-      health: '/api/health'
-    }
-  });
+
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../apps/web/build')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../apps/web/build/index.html'));
 });
 
 // ============================================
