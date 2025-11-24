@@ -5,7 +5,7 @@ import { Badge } from '@repo/ui/badge';
 import { Label } from '@repo/ui/label';
 import { Textarea } from '@repo/ui/textarea';
 import { Separator } from '@repo/ui/separator';
-import { Camera, Mic, Check, Play, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Camera, Mic, Check, Play, CheckCircle2, ArrowLeft, MapPin, Phone } from 'lucide-react';
 import type { TaskHeaderValue } from '../forms/taskSessionSchema';
 import { SignaturePad } from './SignaturePad';
 import { useTaskSessions, type Session } from '../../hooks/useTaskSessions';
@@ -16,6 +16,7 @@ type SimpleTaskValue = {
   // Header
   client?: string;
   clientSite?: string;
+  siteMapUrl?: string;
   taskType?: string;
   title?: string;
   onsiteContactName?: string;
@@ -231,7 +232,20 @@ export function TaskFormSimple({ value, onChange, onBack, onComplete }: Props) {
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Site Location</Label>
-                    <p className="mt-1 font-medium">{header.clientSite || '—'}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="font-medium">{header.clientSite || '—'}</p>
+                      {value.siteMapUrl && (
+                        <a
+                          href={value.siteMapUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center rounded-md p-1.5 hover:bg-accent transition-colors"
+                          aria-label="Open in Google Maps"
+                        >
+                          <MapPin className="h-4 w-4 text-primary" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -241,7 +255,17 @@ export function TaskFormSimple({ value, onChange, onBack, onComplete }: Props) {
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Contact Number</Label>
-                    <p className="mt-1 font-medium">{header.contactNumber || '—'}</p>
+                    {header.contactNumber ? (
+                      <a
+                        href={`tel:${header.contactNumber}`}
+                        className="mt-1 font-medium inline-flex items-center gap-2 text-primary hover:underline"
+                      >
+                        <Phone className="h-4 w-4" />
+                        {header.contactNumber}
+                      </a>
+                    ) : (
+                      <p className="mt-1 font-medium">—</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -487,18 +511,23 @@ export function TaskFormSimple({ value, onChange, onBack, onComplete }: Props) {
       {active && (
         <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="mx-auto max-w-3xl p-3">
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                disabled={!canEnd}
-                onClick={endToday}
-                className="flex-none"
-              >
-                End Today (Continue Tomorrow)
-              </Button>
-              <Button disabled={!canComplete} onClick={completeTask} className="flex-none">
-                <CheckCircle2 className="mr-2 h-4 w-4" /> Complete Task
-              </Button>
+            <div className="space-y-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={!canEnd}
+                  onClick={endToday}
+                  className="flex-none text-sm px-3 py-2"
+                >
+                  End Today (Continue Tomorrow)
+                </Button>
+                <Button disabled={!canComplete} onClick={completeTask} className="flex-none text-sm px-3 py-2">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Complete Task
+                </Button>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-muted-foreground">Work in Progress</p>
+              </div>
             </div>
           </div>
         </div>
